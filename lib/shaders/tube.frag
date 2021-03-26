@@ -1,9 +1,9 @@
-#extension GL_OES_standard_derivatives : enable
+// #extension GL_OES_standard_derivatives : enable
 precision highp float;
 
-varying vec3 vNormal;
-varying vec2 vUv;
-varying vec3 vViewPosition;
+in vec3 vNormal;
+in vec2 vUv;
+in vec3 vViewPosition;
 
 uniform vec3 color;
 uniform float animateRadius;
@@ -11,6 +11,7 @@ uniform float animateStrength;
 
 #pragma glslify: faceNormal = require('glsl-face-normal');
 
+out vec4 fragmentColor;
 void main () {
   // handle flat and smooth normals
   vec3 normal = vNormal;
@@ -34,5 +35,5 @@ void main () {
   vec3 curColor = mix(color, #fff, smoothstep(t - edge, t + edge, vUv.y) * animateStrength);
 
   // final color
-  gl_FragColor = vec4(diffuse * curColor, 1.0);
+  fragmentColor = vec4(diffuse * curColor, 1.0);
 }

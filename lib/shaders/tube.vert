@@ -1,7 +1,7 @@
 // attributes of our mesh
-attribute float position;
-attribute float angle;
-attribute vec2 uv;
+in float position;
+in float angle;
+in vec2 uv;
 
 // built-in uniforms from ThreeJS camera and Object3D
 uniform mat4 projectionMatrix;
@@ -17,9 +17,9 @@ uniform float index;
 uniform float radialSegments;
 
 // pass a few things along to the vertex shader
-varying vec2 vUv;
-varying vec3 vViewPosition;
-varying vec3 vNormal;
+out vec2 vUv;
+out vec3 vViewPosition;
+out vec3 vNormal;
 
 // Import a couple utilities
 #pragma glslify: PI = require('glsl-pi');
@@ -40,15 +40,117 @@ vec3 spherical (float r, float phi, float theta) {
   );
 }
 
+vec4 initCubicPolynomial(float x0, float x1, float t0, float t1) {
+  return vec4(x0, t0, - 3.0 * x0 + 3.0 * x1 - 2.0 * t0 - t1, 2.0 * x0 - 2.0 * x1 + t0 + t1);
+}
+float calcCubicPolynomial( float t, vec4 c ) {
+ 
+			float t2 = t * t;
+			float t3 = t2 * t;
+			return c[0] + c[1] * t + c[2] * t2 + c[3] * t3;
+		}
+vec4 initNonuniformCatmullRom( float x0, float x1, float x2, float x3, float dt0, float dt1, float dt2 ) {
+
+			// compute tangents when parameterized in [t1,t2]
+			float t1 = ( x1 - x0 ) / dt0 - ( x2 - x0 ) / ( dt0 + dt1 ) + ( x2 - x1 ) / dt1;
+			float t2 = ( x2 - x1 ) / dt1 - ( x3 - x1 ) / ( dt1 + dt2 ) + ( x3 - x2 ) / dt2;
+
+			// rescale tangents for parametrization in [0,1]
+			t1 *= dt1;
+			t2 *= dt1;
+
+			return initCubicPolynomial( x1, x2, t1, t2 );
+
+		}
+
 // Flying a curve along a sine wave
-// vec3 sample (float t) {
+// vec3 sampleCurve (float t) {
 //   float x = t * 2.0 - 1.0;
 //   float y = sin(t + time);
 //   return vec3(x, y, 0.0);
 // }
+#if 0
+vec3 sampleCurve(float t) {
+    vec3 points[3];
+    points[0] = vec3(0,0,0);
+    points[1] = vec3(1,1,0);
+    points[2] = vec3(-2, 4, 3);
+    int numPoints = 3;
+
+		vec3 point = vec3(0,0,0);
+
+		int l = numPoints;
+
+		float p = float( l - 1 ) * t;
+		int intPoint = int(floor( p ));
+		float weight = p - float(intPoint);
+
+		if ( weight == 0.0 && intPoint == (l - 1) ) {
+
+			intPoint = l - 2;
+			weight = 1.0;
+
+		}
+
+		vec3 p0, p3; // 4 points (p1 & p2 defined below)
+
+		if ( intPoint > 0 ) {
+
+			p0 = points[ ( intPoint - 1 ) % l ];
+
+		} else {
+
+			// extrapolate first point
+			//tmp.subVectors( points[ 0 ], points[ 1 ] ).add( points[ 0 ] );
+      p0 = (points[0]-points[1]) + points[0];
+
+		}
+
+		vec3 p1 = points[ intPoint % l ];
+		vec3 p2 = points[ ( intPoint + 1 ) % l ];
+
+		if ( intPoint + 2 < l ) {
+
+			p3 = points[ ( intPoint + 2 ) % l ];
+
+		} else {
+
+			// extrapolate last point
+			//tmp.subVectors( points[ l - 1 ], points[ l - 2 ] ).add( points[ l - 1 ] );
+			p3 = (points[l-1]-points[l-2])+points[l-1];
+
+		}
+
+    // init Centripetal / Chordal Catmull-Rom
+    const float exponent = 0.25;
+    float dt0 = dot(p0-p1, p0-p1);
+    float dt1 = dot(p1-p2, p1-p2);
+    float dt2 = dot(p2-p3, p2-p3);
+    dt0 = pow( dt0, exponent );
+    dt1 = pow( dt1, exponent );
+    dt2 = pow( dt2, exponent );
+
+    // safety check for repeated points
+    if ( dt1 < 1e-4 ) dt1 = 1.0;
+    if ( dt0 < 1e-4 ) dt0 = dt1;
+    if ( dt2 < 1e-4 ) dt2 = dt1;
+
+    vec4 px = initNonuniformCatmullRom( p0.x, p1.x, p2.x, p3.x, dt0, dt1, dt2 );
+    vec4 py = initNonuniformCatmullRom( p0.y, p1.y, p2.y, p3.y, dt0, dt1, dt2 );
+    vec4 pz = initNonuniformCatmullRom( p0.z, p1.z, p2.z, p3.z, dt0, dt1, dt2 );
+
+		point = vec3(
+			calcCubicPolynomial( weight, px ),
+			calcCubicPolynomial( weight, py ),
+			calcCubicPolynomial( weight, pz )
+		);
+
+		return point;
+	}
+#endif
 
 // Creates an animated torus knot
-vec3 sample (float t) {
+vec3 sampleCurve (float t) {
   float beta = t * PI;
   
   float ripple = ease(sin(t * 2.0 * PI + time) * 0.5 + 0.5) * 0.5;
@@ -62,6 +164,7 @@ vec3 sample (float t) {
 
   return spherical(r, phi, theta);
 }
+
 
 #ifdef ROBUST
 // ------
@@ -86,8 +189,8 @@ void createTube (float t, vec2 volume, out vec3 outPosition, out vec3 outNormal)
   float nextT = t + (1.0 / lengthSegments);
 
   // find first tangent
-  vec3 point0 = sample(0.0);
-  vec3 point1 = sample(1.0 / lengthSegments);
+  vec3 point0 = sampleCurve(0.0);
+  vec3 point1 = sampleCurve(1.0 / lengthSegments);
 
   vec3 lastTangent = getTangent(point0, point1);
   vec3 absTangent = abs(lastTangent);
@@ -122,8 +225,8 @@ void createTube (float t, vec2 volume, out vec3 outPosition, out vec3 outNormal)
   for (float i = 1.0; i < lengthSegments; i += 1.0) {
     float u = i / maxLen;
     // could avoid additional sample here at expense of ternary
-    // point = i == 1.0 ? point1 : sample(u);
-    point = sample(u);
+    // point = i == 1.0 ? point1 : sampleCurve(u);
+    point = sampleCurve(u);
     tangent = getTangent(lastPoint, point);
     normal = lastNormal;
     binormal = lastBinormal;
@@ -168,8 +271,8 @@ void createTube (float t, vec2 volume, out vec3 offset, out vec3 normal) {
   float nextT = t + (1.0 / lengthSegments);
 
   // sample the curve in two places
-  vec3 current = sample(t);
-  vec3 next = sample(nextT);
+  vec3 current = sampleCurve(t);
+  vec3 next = sampleCurve(nextT);
   
   // compute the TBN matrix
   vec3 T = normalize(next - current);
