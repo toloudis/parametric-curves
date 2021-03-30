@@ -11,10 +11,10 @@ uniform mat3 normalMatrix;
 // custom uniforms to build up our tubes
 uniform float thickness;
 uniform float time;
-uniform float animateRadius;
-uniform float animateStrength;
 uniform float index;
 uniform float radialSegments;
+
+uniform sampler2D curveData;
 
 // pass a few things along to the vertex shader
 out vec2 vUv;
@@ -69,12 +69,14 @@ vec4 initNonuniformCatmullRom( float x0, float x1, float x2, float x3, float dt0
 //   float y = sin(t + time);
 //   return vec3(x, y, 0.0);
 // }
-#if 0
+
 vec3 sampleCurve(float t) {
+    // this is my curve?
     vec3 points[3];
-    points[0] = vec3(0,0,0);
-    points[1] = vec3(1,1,0);
-    points[2] = vec3(-2, 4, 3);
+
+    points[0] = texelFetch(curveData,ivec2(0, index), 0).rgb * 0.25;
+    points[1] = texelFetch(curveData,ivec2(1, index), 0).rgb * 0.25;
+    points[2] = texelFetch(curveData,ivec2(2, index), 0).rgb * 0.25;
     int numPoints = 3;
 
 		vec3 point = vec3(0,0,0);
@@ -147,23 +149,6 @@ vec3 sampleCurve(float t) {
 
 		return point;
 	}
-#endif
-
-// Creates an animated torus knot
-vec3 sampleCurve (float t) {
-  float beta = t * PI;
-  
-  float ripple = ease(sin(t * 2.0 * PI + time) * 0.5 + 0.5) * 0.5;
-  float noise = time + index * ripple * 8.0;
-  
-  // animate radius on click
-  float radiusAnimation = animateRadius * animateStrength * 0.25;
-  float r = sin(index * 0.75 + beta * 2.0) * (0.75 + radiusAnimation);
-  float theta = 4.0 * beta + index * 0.25;
-  float phi = sin(index * 2.0 + beta * 8.0 + noise);
-
-  return spherical(r, phi, theta);
-}
 
 
 #ifdef ROBUST
@@ -297,11 +282,6 @@ void main() {
 
   // build our tube geometry
   vec2 volume = vec2(thickness);
-
-  // animate the per-vertex curve thickness
-  float volumeAngle = t * lengthSegments * 0.5 + index * 20.0 + time * 2.5;
-  float volumeMod = sin(volumeAngle) * 0.5 + 0.5;
-  volume += 0.01 * volumeMod;
 
   // build our geometry
   vec3 transformed;

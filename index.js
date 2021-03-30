@@ -27,6 +27,7 @@ setupCursor();
 start();
 
 function setupCursor () {
+  query.orbitControls = true;
   if (query.orbitControls) {
     const onMouseGrab = () => classes(app.canvas).add('grabbing');
     const onMouseUngrab = () => classes(app.canvas).remove('grabbing');

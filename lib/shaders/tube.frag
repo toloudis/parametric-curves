@@ -6,8 +6,6 @@ in vec2 vUv;
 in vec3 vViewPosition;
 
 uniform vec3 color;
-uniform float animateRadius;
-uniform float animateStrength;
 
 #pragma glslify: faceNormal = require('glsl-face-normal');
 
@@ -28,12 +26,9 @@ void main () {
   float rim = smoothstep(0.5, 1.0, vDotN);
   diffuse += rim * 2.0;
 
-  // we'll animate in the new color from the center point
-  float distFromCenter = clamp(length(vViewPosition) / 5.0, 0.0, 1.0);
-  float edge = 0.05;
-  float t = animateRadius;
-  vec3 curColor = mix(color, #fff, smoothstep(t - edge, t + edge, vUv.y) * animateStrength);
-
+  //float distFromCenter = clamp(length(vViewPosition) / 5.0, 0.0, 1.0);
+  
   // final color
-  fragmentColor = vec4(diffuse * curColor, 1.0);
+  //fragmentColor = vec4(diffuse * color, 1.0);
+  fragmentColor = vec4(0.5*(normal+1.0), 1.0);
 }
