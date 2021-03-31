@@ -31,6 +31,9 @@ out vec3 vNormal;
   const float EPSILON = 1.19209290e-7;
 #endif
 
+// the curve itself; to be loaded at beginning of main
+vec3 points[NUM_POINTS];
+
 // Angles to spherical coordinates
 vec3 spherical (float r, float phi, float theta) {
   return r * vec3(
@@ -63,20 +66,14 @@ vec4 initNonuniformCatmullRom( float x0, float x1, float x2, float x3, float dt0
 
 		}
 
+vec3 getCurvePoint(int i) {
+  return texelFetch(curveData,ivec2(i, index), 0).rgb * 0.25;
+}
+
 vec3 sampleCurve(float t) {
-    // this is my curve?
-    vec3 points[5];
-
-    points[0] = texelFetch(curveData,ivec2(0, index), 0).rgb * 0.25;
-    points[1] = texelFetch(curveData,ivec2(1, index), 0).rgb * 0.25;
-    points[2] = texelFetch(curveData,ivec2(2, index), 0).rgb * 0.25;
-    points[3] = texelFetch(curveData,ivec2(3, index), 0).rgb * 0.25;
-    points[4] = texelFetch(curveData,ivec2(4, index), 0).rgb * 0.25;
-    int numPoints = 5;
-
 		vec3 point = vec3(0,0,0);
 
-		int l = numPoints;
+		int l = NUM_POINTS;
 
 		float p = float( l - 1 ) * t;
 		int intPoint = int(floor( p ));
@@ -269,11 +266,16 @@ void createTube (float t, vec2 volume, out vec3 offset, out vec3 normal) {
 
   // compute position and normal
   normal.xyz = normalize(B * circX + N * circY);
-  offset.xyz = current + B * volume.x * circX + N * volume.y * circY;
+  offset.xyz = sampleCurve(t) + B * volume.x * circX + N * volume.y * circY;
 }
 #endif
 
 void main() {
+  // load the curve
+  for (int i = 0; i < NUM_POINTS; ++i) {
+    points[i] = getCurvePoint(i);
+  }
+
   // current position to sample at
   // [-0.5 .. 0.5] to [0.0 .. 1.0]
   float t = (position * 2.0) * 0.5 + 0.5;
