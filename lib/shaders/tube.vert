@@ -247,16 +247,19 @@ void createTube (float t, vec2 volume, out vec3 outPosition, out vec3 outNormal)
 // Fast version; computes the local Frenet-Serret frame
 // ------
 void createTube (float t, vec2 volume, out vec3 offset, out vec3 normal) {
-  // find next sample along curve
-  float nextT = t + (1.0 / lengthSegments);
+  // find prev and next sample along curve
+
+  float delta = 0.0001;
+	float t1 = max(t - delta, 0.0);
+	float t2 = min(t + delta, 1.0);
 
   // sample the curve in two places
-  vec3 current = sampleCurve(t);
-  vec3 next = sampleCurve(nextT);
+  vec3 prev = sampleCurve(t1);
+  vec3 next = sampleCurve(t2);
 
   // compute the TBN matrix
-  vec3 T = normalize(next - current);
-  vec3 B = normalize(cross(T, next + current));
+  vec3 T = normalize(next - prev);
+  vec3 B = normalize(cross(T, next + prev));
   vec3 N = -normalize(cross(B, T));
 
   // extrude outward to create a tube
