@@ -44,7 +44,7 @@ vec4 initCubicPolynomial(float x0, float x1, float t0, float t1) {
   return vec4(x0, t0, - 3.0 * x0 + 3.0 * x1 - 2.0 * t0 - t1, 2.0 * x0 - 2.0 * x1 + t0 + t1);
 }
 float calcCubicPolynomial( float t, vec4 c ) {
- 
+
 			float t2 = t * t;
 			float t3 = t2 * t;
 			return c[0] + c[1] * t + c[2] * t2 + c[3] * t3;
@@ -63,21 +63,16 @@ vec4 initNonuniformCatmullRom( float x0, float x1, float x2, float x3, float dt0
 
 		}
 
-// Flying a curve along a sine wave
-// vec3 sampleCurve (float t) {
-//   float x = t * 2.0 - 1.0;
-//   float y = sin(t + time);
-//   return vec3(x, y, 0.0);
-// }
-
 vec3 sampleCurve(float t) {
     // this is my curve?
-    vec3 points[3];
+    vec3 points[5];
 
     points[0] = texelFetch(curveData,ivec2(0, index), 0).rgb * 0.25;
     points[1] = texelFetch(curveData,ivec2(1, index), 0).rgb * 0.25;
     points[2] = texelFetch(curveData,ivec2(2, index), 0).rgb * 0.25;
-    int numPoints = 3;
+    points[3] = texelFetch(curveData,ivec2(3, index), 0).rgb * 0.25;
+    points[4] = texelFetch(curveData,ivec2(4, index), 0).rgb * 0.25;
+    int numPoints = 5;
 
 		vec3 point = vec3(0,0,0);
 
@@ -258,7 +253,7 @@ void createTube (float t, vec2 volume, out vec3 offset, out vec3 normal) {
   // sample the curve in two places
   vec3 current = sampleCurve(t);
   vec3 next = sampleCurve(nextT);
-  
+
   // compute the TBN matrix
   vec3 T = normalize(next - current);
   vec3 B = normalize(cross(T, next + current));
